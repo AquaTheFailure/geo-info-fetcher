@@ -1,0 +1,267 @@
+<!--
+Made By: Aqua
+Date: 03/03/2025
+Description: Just cause i was bored.
+
+IP Address API (ipify):
+
+URL: https://api.ipify.org?format=json
+Purpose: To fetch the user's IP address.
+Reverse Geocoding API (Nominatim from OpenStreetMap):
+
+URL: https://nominatim.openstreetmap.org/reverse
+Purpose: To get the address information based on latitude and longitude coordinates.
+Google Maps Embed API:
+
+URL: https://maps.google.com/maps
+Purpose: To embed a map showing the user's location.
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Location, IP, Browser Information, Battery, Timezone</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #info-box {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #location, #ipAddress, #address, #browser-info, #battery-info, #timezone-info {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+
+        #map-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 300px;
+            background-color: #f0f0f0;
+            box-shadow: 0px -2px 5px rgba(0,0,0,0.3);
+            padding: 10px;
+            display: none;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        #toggle-map-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Get Your Location, IP Address, Address, Browser Info, Battery & Timezone</h1>
+    <button onclick="getAllInfo()">Get All Info</button>
+
+    <div id="info-box">
+        <div id="location"></div>
+        <div id="ipAddress"></div>
+        <div id="address"></div>
+        <div id="browser-info"></div>
+        <div id="battery-info"></div>
+        <div id="timezone-info"></div>
+    </div>
+
+    <div id="map-container">
+        <iframe id="map" src="" allowfullscreen></iframe>
+    </div>
+
+    <button id="toggle-map-btn" onclick="toggleMap()">Show Map</button>
+
+    <script>
+        let mapVisible = false; // Flag to track map visibility
+
+        function getAllInfo() {
+            getLocation();
+            getBrowserInfo();
+            getBatteryStatus();
+            getTimezone();
+        }
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                document.getElementById("location").innerHTML = "Geolocation is not supported by this browser.";
+            }
+
+            // Get the IP address using ipify API
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    let ip = data.ip;
+                    document.getElementById("ipAddress").innerHTML = "IP Address: " + ip;
+                })
+                .catch(error => {
+                    document.getElementById("ipAddress").innerHTML = "Error fetching IP address.";
+                });
+        }
+
+        function showPosition(position) {
+            let lat = position.coords.latitude;
+            let lon = position.coords.longitude;
+            document.getElementById("location").innerHTML = "Latitude: " + lat + "<br>Longitude: " + lon;
+
+            // Get the address using reverse geocoding
+            getAddress(lat, lon);
+
+            // Display the map with the coordinates
+            displayMap(lat, lon);
+        }
+
+        function showError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    document.getElementById("location").innerHTML = "User denied the request for Geolocation.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    document.getElementById("location").innerHTML = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    document.getElementById("location").innerHTML = "The request to get user location timed out.";
+                    break;
+                case error.UNKNOWN_ERROR:
+                    document.getElementById("location").innerHTML = "An unknown error occurred.";
+                    break;
+            }
+        }
+
+        function getAddress(lat, lon) {
+            let url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.address) {
+                        let address = data.address;
+                        let addressStr = `${address.building || ''}, ${address.road || ''}, ${address.city || ''}, ${address.country || ''}`;
+                        document.getElementById("address").innerHTML = "Address: " + addressStr;
+                    } else {
+                        document.getElementById("address").innerHTML = "Unable to fetch address.";
+                    }
+                })
+                .catch(error => {
+                    document.getElementById("address").innerHTML = "Error fetching address.";
+                });
+        }
+
+        function displayMap(lat, lon) {
+            // Show the map container
+            document.getElementById('map-container').style.display = 'block';
+
+            // Create the Google Maps iframe with the correct location
+            let mapUrl = `https://maps.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+            document.getElementById("map").src = mapUrl;
+
+            // Update map visibility flag
+            mapVisible = true;
+            document.getElementById("toggle-map-btn").innerText = "Hide Map";
+        }
+
+        function toggleMap() {
+            if (mapVisible) {
+                // Hide the map
+                document.getElementById('map-container').style.display = 'none';
+                mapVisible = false;
+                document.getElementById("toggle-map-btn").innerText = "Show Map";
+            } else {
+                // Show the map
+                document.getElementById('map-container').style.display = 'block';
+                mapVisible = true;
+                document.getElementById("toggle-map-btn").innerText = "Hide Map";
+            }
+        }
+
+        function getBrowserInfo() {
+            let browserInfo = "";
+
+            // Get user agent string
+            let userAgent = navigator.userAgent;
+            browserInfo += "User Agent: " + userAgent + "<br>";
+
+            // Get browser name and version
+            let browserName = "Unknown";
+            let browserVersion = "Unknown";
+
+            if (userAgent.indexOf("Chrome") > -1) {
+                browserName = "Google Chrome";
+                browserVersion = userAgent.match(/Chrome\/([0-9.]+)/)[1];
+            } else if (userAgent.indexOf("Firefox") > -1) {
+                browserName = "Mozilla Firefox";
+                browserVersion = userAgent.match(/Firefox\/([0-9.]+)/)[1];
+            } else if (userAgent.indexOf("Safari") > -1) {
+                browserName = "Safari";
+                browserVersion = userAgent.match(/Version\/([0-9.]+)/)[1];
+            } else if (userAgent.indexOf("MSIE") > -1 || userAgent.indexOf("Trident") > -1) {
+                browserName = "Internet Explorer";
+                browserVersion = userAgent.match(/(MSIE\s|rv:)([0-9.]+)/)[2];
+            } else if (userAgent.indexOf("Edge") > -1) {
+                browserName = "Microsoft Edge";
+                browserVersion = userAgent.match(/Edge\/([0-9.]+)/)[1];
+            } else if (userAgent.indexOf("Opera") > -1 || userAgent.indexOf("OPR") > -1) {
+                browserName = "Opera";
+                browserVersion = userAgent.match(/Opera\/([0-9.]+)/) ? userAgent.match(/Opera\/([0-9.]+)/)[1] : userAgent.match(/OPR\/([0-9.]+)/)[1];
+            }
+
+            browserInfo += "Browser: " + browserName + " " + browserVersion + "<br>";
+
+            // Get operating system (platform)
+            let os = navigator.platform;
+            browserInfo += "Operating System: " + os + "<br>";
+
+            // Get language
+            let language = navigator.language || navigator.userLanguage;
+            browserInfo += "Language: " + language + "<br>";
+
+            // Get screen resolution
+            let screenResolution = window.screen.width + "x" + window.screen.height;
+            browserInfo += "Screen Resolution: " + screenResolution + "<br>";
+
+            // Get device pixel ratio
+            let pixelRatio = window.devicePixelRatio;
+            browserInfo += "Device Pixel Ratio: " + pixelRatio + "<br>";
+
+            // Display all the gathered info
+            document.getElementById("browser-info").innerHTML = browserInfo;
+        }
+
+        function getBatteryStatus() {
+            navigator.getBattery().then(function(battery) {
+                let batteryInfo = `Battery Level: ${Math.round(battery.level * 100)}%<br>`;
+                batteryInfo += `Charging: ${battery.charging ? "Yes" : "No"}<br>`;
+                batteryInfo += `Charging Time: ${battery.chargingTime} seconds<br>`;
+                batteryInfo += `Discharging Time: ${battery.dischargingTime} seconds<br>`;
+
+                document.getElementById("battery-info").innerHTML = batteryInfo;
+            });
+        }
+
+        function getTimezone() {
+            let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            document.getElementById("timezone-info").innerHTML = "Timezone: " + timezone;
+        }
+    </script>
+</body>
+</html>
